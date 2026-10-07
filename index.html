@@ -58,6 +58,23 @@ section h2{font-size:clamp(1.8rem,4vw,2.6rem);margin-bottom:12px}
 .contact h2{color:#fff}
 .contact p{margin:0 auto 26px;max-width:480px;color:#cfdcb4}
 footer{padding:24px 0;text-align:center;color:var(--mute);font-size:.9rem}
+.qty{display:flex;align-items:center;gap:10px}
+.qty button{width:38px;height:38px;border-radius:50%;border:2px solid var(--soil);background:#fff;font-size:1.3rem;line-height:1;cursor:pointer;color:var(--soil)}
+.qty button:hover{background:var(--sprout)}
+.qty span{min-width:22px;text-align:center;font-weight:500}
+.card.has{border-color:var(--leaf)}
+.order-box{max-width:520px;margin:0 auto;text-align:left;background:#3a2718;border-radius:18px;padding:24px}
+.order-box h3{color:#fff;margin-bottom:10px;font-size:1.2rem}
+#sum{list-style:none;padding:0;margin:0 0 14px;color:#cfdcb4}
+#sum li{display:flex;justify-content:space-between;padding:4px 0}
+#sum .empty{color:#a99b8a}
+.total{display:flex;justify-content:space-between;font-weight:500;color:#fff;border-top:1px solid #5a4533;padding-top:10px;margin-bottom:16px}
+.order-box label{display:block;margin:10px 0 4px;color:#cfdcb4;font-size:.95rem}
+.order-box input,.order-box textarea{width:100%;padding:12px;border-radius:10px;border:2px solid transparent;font:inherit;background:#fff;color:var(--ink)}
+.order-box input:focus,.order-box textarea:focus{border-color:var(--leaf);outline:0}
+.order-box .btn{width:100%;margin-top:18px;text-align:center}
+.order-box .btn[disabled]{opacity:.45;cursor:not-allowed}
+.hint{margin-top:10px;font-size:.88rem;color:#a99b8a;text-align:center}
 .float{position:fixed;right:16px;bottom:16px;z-index:9}
 @media(prefers-reduced-motion:reduce){.s{animation:none;transform:none}html{scroll-behavior:auto}}
 </style>
@@ -108,9 +125,19 @@ footer{padding:24px 0;text-align:center;color:var(--mute);font-size:.9rem}
 
 <section class="contact" id="order">
   <div class="wrap">
-    <h2>Ready to taste the difference?</h2>
-    <p>Send a WhatsApp message with your order. We reply within the hour during the day.</p>
-    <a class="btn" data-wa href="#">Order on WhatsApp</a>
+    <h2>Place your order</h2>
+    <p>Pick quantities above, add your details, and send. We confirm on WhatsApp.</p>
+    <div class="order-box">
+      <h3>Your order</h3>
+      <ul id="sum"><li class="empty">Nothing added yet. Use + on a variety above.</li></ul>
+      <div class="total"><span>Total</span><span id="total">₹0</span></div>
+      <label for="cname">Your name</label>
+      <input id="cname" autocomplete="name" placeholder="Name">
+      <label for="caddr">Delivery address or area</label>
+      <textarea id="caddr" rows="3" autocomplete="street-address" placeholder="House no, street, area"></textarea>
+      <button class="btn" id="send" type="button" disabled>Send order on WhatsApp</button>
+      <p class="hint" id="hint">Add at least one pack, your name, and address.</p>
+    </div>
   </div>
 </section>
 
@@ -123,7 +150,7 @@ footer{padding:24px 0;text-align:center;color:var(--mute);font-size:.9rem}
 const CONFIG = {
   brand: "Green Tray Microgreens",
   area: "Vijayawada",
-  phone: "919963299768",          // country code + number, no + or spaces
+  phone: "919999999999",          // country code + number, no + or spaces
   unit: "100 g pack",
   products: [
     {name:"Sunflower", photo:"photos/sunflower.jpg", color:"#7cc242", price:80,  text:"Nutty and crunchy. The easiest one to start with."},
@@ -143,14 +170,18 @@ document.querySelectorAll("[data-phone]").forEach(e => e.textContent = "+" + CON
 document.querySelectorAll("[data-wa]").forEach(e => e.href = wa("Hi, I want to order microgreens."));
 document.title = CONFIG.brand + " | Organic microgreens";
 
-document.getElementById("products").innerHTML = CONFIG.products.map(p => `
+document.getElementById("products").innerHTML = CONFIG.products.map((p, i) => `
   <article class="card">
     <div class="pic"><img src="${p.photo}" alt="${p.name} microgreens" loading="lazy"></div>
     <h3>${p.name}</h3>
     <p>${p.text}</p>
     <div class="row">
       <span class="price">₹${p.price} / ${CONFIG.unit}</span>
-      <a class="order" href="${wa("Hi, I want to order " + p.name + " microgreens.")}">Order</a>
+      <div class="qty" role="group" aria-label="Quantity of ${p.name}">
+        <button type="button" data-i="${i}" data-d="-1" aria-label="Remove one ${p.name}">−</button>
+        <span id="q${i}" aria-live="polite">0</span>
+        <button type="button" data-i="${i}" data-d="1" aria-label="Add one ${p.name}">+</button>
+      </div>
     </div>
   </article>`).join("");
 
@@ -172,6 +203,36 @@ document.querySelectorAll(".pic").forEach((box,i)=>{
   if(img.complete && img.naturalWidth===0) swap();
 });
 
+
+/* ---- Cart: quantities, summary, single WhatsApp message ---- */
+const qty = CONFIG.products.map(() => 0);
+const $ = id => document.getElementById(id);
+function refresh(){
+  const lines = CONFIG.products.map((p,i)=>({p,n:qty[i]})).filter(x=>x.n>0);
+  $("sum").innerHTML = lines.length
+    ? lines.map(x=>`<li><span>${x.p.name} × ${x.n}</span><span>₹${x.p.price*x.n}</span></li>`).join("")
+    : '<li class="empty">Nothing added yet. Use + on a variety above.</li>';
+  const total = lines.reduce((t,x)=>t+x.p.price*x.n,0);
+  $("total").textContent = "₹" + total;
+  qty.forEach((n,i)=>{ $("q"+i).textContent = n; $("q"+i).closest(".card").classList.toggle("has", n>0); });
+  const ready = lines.length && $("cname").value.trim() && $("caddr").value.trim();
+  $("send").disabled = !ready;
+  $("hint").style.visibility = ready ? "hidden" : "visible";
+}
+document.getElementById("products").addEventListener("click", e => {
+  const b = e.target.closest("button[data-i]"); if(!b) return;
+  const i = +b.dataset.i;
+  qty[i] = Math.max(0, Math.min(20, qty[i] + +b.dataset.d));
+  refresh();
+});
+["cname","caddr"].forEach(id => $(id).addEventListener("input", refresh));
+$("send").addEventListener("click", () => {
+  const lines = CONFIG.products.map((p,i)=>qty[i]>0 ? `- ${p.name} x ${qty[i]} = ₹${p.price*qty[i]}` : null).filter(Boolean);
+  const total = CONFIG.products.reduce((t,p,i)=>t+p.price*qty[i],0);
+  const msg = ["Hi, I want to order:", ...lines, `Total: ₹${total}`, "", `Name: ${$("cname").value.trim()}`, `Address: ${$("caddr").value.trim()}`].join("\n");
+  window.open(wa(msg), "_blank");
+});
+refresh();
 </script>
 </body>
 </html>

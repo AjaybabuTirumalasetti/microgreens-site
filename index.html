@@ -23,9 +23,11 @@ header{display:flex;justify-content:space-between;align-items:center;padding:18p
 .btn:hover{background:#74c43f}
 .btn.dark{background:var(--soil);color:var(--sprout)}
 /* hero */
-.hero{background:var(--soil);color:var(--sprout);position:relative;overflow:hidden}
+.hero{background:var(--soil) url(photos/hero.jpg) right bottom/cover no-repeat;color:var(--sprout);position:relative;overflow:hidden;min-height:560px}
+.hero::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(21,14,9,.85) 0%,rgba(21,14,9,.55) 55%,rgba(21,14,9,.1) 100%)}
+.hero .wrap{position:relative}
 .hero header .logo{color:var(--sprout)}
-.hero .copy{padding:48px 0 190px;max-width:640px}
+.hero .copy{padding:56px 0 110px;max-width:640px}
 .hero h1{font-size:clamp(2.4rem,7vw,4.4rem);font-weight:800;color:#fff}
 .hero p{margin:20px 0 28px;font-size:1.15rem;max-width:480px;color:#cfdcb4}
 .rows{position:absolute;left:0;right:0;bottom:0;height:150px;display:flex;align-items:flex-end;gap:6px;padding:0 6px}
@@ -71,8 +73,6 @@ footer{padding:24px 0;text-align:center;color:var(--mute);font-size:.9rem}
       <a class="btn" href="#varieties">See varieties</a>
     </div>
   </div>
-  <div class="rows" id="rows" aria-hidden="true"></div>
-  <div class="soil"></div>
 </div>
 
 <section id="varieties">
@@ -123,7 +123,7 @@ footer{padding:24px 0;text-align:center;color:var(--mute);font-size:.9rem}
 const CONFIG = {
   brand: "Green Tray Microgreens",
   area: "Vijayawada",
-  phone: "919999999999",          // country code + number, no + or spaces
+  phone: "919963299768",          // country code + number, no + or spaces
   unit: "100 g pack",
   products: [
     {name:"Sunflower", photo:"photos/sunflower.jpg", color:"#7cc242", price:80,  text:"Nutty and crunchy. The easiest one to start with."},
@@ -154,12 +154,24 @@ document.getElementById("products").innerHTML = CONFIG.products.map(p => `
     </div>
   </article>`).join("");
 
-const greens = ["#5fae2e","#74c43f","#4a9a26","#9ad06a","#b8336a","#7cc242"];
-document.getElementById("rows").innerHTML = Array.from({length:60}, (_, i) => {
-  const h = 40 + Math.random()*100;
-  const c = greens[Math.floor(Math.random()*greens.length)];
-  return `<span class="s" style="height:${h}px;background:${c};animation-delay:${(i*0.03).toFixed(2)}s"></span>`;
-}).join("");
+/* Placeholder drawing shown until a real photo exists in the photos/ folder */
+function drawing(color){
+  let g="";
+  for(let i=0;i<9;i++){
+    const x=30+i*32+(i%2)*6, h=55+((i*37)%50), y=190-h;
+    g+=`<line x1="${x}" y1="190" x2="${x}" y2="${y}" stroke="#8fc45a" stroke-width="3" stroke-linecap="round"/>`+
+       `<ellipse cx="${x-7}" cy="${y}" rx="11" ry="6" fill="${color}" transform="rotate(-25 ${x-7} ${y})"/>`+
+       `<ellipse cx="${x+7}" cy="${y}" rx="11" ry="6" fill="${color}" transform="rotate(25 ${x+7} ${y})"/>`;
+  }
+  return `<svg viewBox="0 0 320 240" role="img" aria-label="Microgreens tray"><rect width="320" height="240" fill="#eaf3d2"/>${g}<rect x="10" y="188" width="300" height="42" rx="8" fill="#3a2718"/><rect x="10" y="188" width="300" height="10" fill="#2b1d14"/></svg>`;
+}
+document.querySelectorAll(".pic").forEach((box,i)=>{
+  const img=box.querySelector("img");
+  const swap=()=>{box.innerHTML=drawing(CONFIG.products[i].color)};
+  img.addEventListener("error",swap);
+  if(img.complete && img.naturalWidth===0) swap();
+});
+
 </script>
 </body>
 </html>
